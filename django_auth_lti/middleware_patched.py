@@ -8,7 +8,6 @@ from django.contrib import auth
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 
-from timer import Timer
 
 from .thread_local import set_current_request
 
@@ -53,9 +52,7 @@ class MultiLTILaunchAuthMiddleware(object):
             logger.debug('received a basic-lti-launch-request - authenticating the user')
 
             # authenticate and log the user in
-            with Timer() as t:
-                user = auth.authenticate(request=request)
-            logger.debug('authenticate() took %s s' % t.secs)
+            user = auth.authenticate(request=request)
 
             if user is not None:
                 # User is valid.  Set request.user and persist user in the session
@@ -63,11 +60,8 @@ class MultiLTILaunchAuthMiddleware(object):
 
                 logger.debug('user was successfully authenticated; now log them in')
                 request.user = user
-                with Timer() as t:
-                    auth.login(request, user)
+                auth.login(request, user)
     
-                logger.debug('login() took %s s' % t.secs)
-
                 resource_link_id = request.POST.get('resource_link_id', None)
                 lti_launch = {
                     'context_id': request.POST.get('context_id', None),

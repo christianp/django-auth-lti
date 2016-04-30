@@ -1,8 +1,8 @@
 """
 Monkey-patch django.core.urlresolvers.reverse to add resource_link_id to all URLs
 """
-from urlparse import urlparse, urlunparse, parse_qs
-from urllib import urlencode
+from urllib.parse import urlparse, urlunparse, parse_qs
+from urllib.parse import urlencode
 
 from django.core import urlresolvers
 
