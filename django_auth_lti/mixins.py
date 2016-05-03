@@ -1,8 +1,8 @@
 from django.core.urlresolvers import reverse_lazy
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect
-from braces.views import LoginRequiredMixin
 from django_auth_lti.verification import is_allowed
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 
 class LTIUtilityMixin(object):
