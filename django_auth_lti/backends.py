@@ -37,6 +37,7 @@ class LTIEndpoint(SignatureOnlyEndpoint):
             # .. _`[RFC3447] section 8.2.2`: http://tools.ietf.org/html/rfc3447#section-8.2.1
             rsa_key = self.request_validator.get_rsa_key(
                 request.client_key, request)
+            logger.info("RSA: ".format(rsa_key))
             valid_signature = signature.verify_rsa_sha1(request, rsa_key)
 
         # ---- HMAC or Plaintext Signature verification ----
@@ -50,10 +51,15 @@ class LTIEndpoint(SignatureOnlyEndpoint):
                 request.client_key, request)
             resource_owner_secret = self.resource_owner_secret
 
+            logger.info("client secret: {}".format(client_secret)
+            logger.info("owner secret: {}".format(resource_owner_secret)
+
             if request.signature_method == SIGNATURE_HMAC:
+                logger.info("HMAC")
                 valid_signature = signature.verify_hmac_sha1(request,
                                                              client_secret, resource_owner_secret)
             else:
+                logger.info("PLAINTEXT")
                 valid_signature = signature.verify_plaintext(request,
                                                              client_secret, resource_owner_secret)
         return valid_signature
