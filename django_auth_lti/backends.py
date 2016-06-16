@@ -239,7 +239,7 @@ class LTIAuthBackend(ModelBackend):
         return user
 
     def clean_username(self, username):
-        return username
+        return username[:25]
 
     def get_default_username(self, request, prefix=''):
         """
@@ -248,4 +248,4 @@ class LTIAuthBackend(ModelBackend):
         """
         # Default back to user_id lti param
         uname = request.POST.get('canvas_user_id') or request.POST.get('user_id')
-        return (prefix + uname)[:30]
+        return prefix + uname
