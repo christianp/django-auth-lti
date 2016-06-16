@@ -112,8 +112,8 @@ class LTIEndpoint(SignatureOnlyEndpoint):
                 request.client_key, request)
             resource_owner_secret = self.resource_owner_secret
 
-            logger.info("client secret: {}".format(client_secret)
-            logger.info("owner secret: {}".format(resource_owner_secret)
+            logger.info("client secret: {}".format(client_secret))
+            logger.info("owner secret: {}".format(resource_owner_secret))
 
             if request.signature_method == SIGNATURE_HMAC:
                 logger.info("HMAC")
