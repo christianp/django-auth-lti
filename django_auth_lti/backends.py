@@ -44,19 +44,19 @@ class LTIEndpoint(SignatureOnlyEndpoint):
         try:
             request = self._create_request(uri, http_method, body, headers)
         except errors.OAuth1Error:
-            logger.debug("Create request failed")
+            logger.error("Create request failed")
             return False, None
 
         try:
             self._check_transport_security(request)
             self._check_mandatory_parameters(request)
         except errors.OAuth1Error:
-            logger.debug("transport security or mandatory params failed")
+            logger.error("transport security or mandatory params failed")
             return False, request
 
         if not self.request_validator.validate_timestamp_and_nonce(
                 request.client_key, request.timestamp, request.nonce, request):
-            logger.debug("timestamp and nonce not valid")
+            logger.error("timestamp and nonce not valid")
             return False, request
 
         # The server SHOULD return a 401 (Unauthorized) status code when
@@ -69,7 +69,7 @@ class LTIEndpoint(SignatureOnlyEndpoint):
         valid_client = self.request_validator.validate_client_key(
             request.client_key, request)
         if not valid_client:
-            logger.debug("not valid client")
+            logger.error("not valid client")
             request.client_key = self.request_validator.dummy_client
 
         valid_signature = self._check_signature(request)
