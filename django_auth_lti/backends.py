@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class LTIRequestValidator(RequestValidator):
     enforce_ssl = False
-    nonce_length = (20,40)
+    nonce_length = (20,50)
     def check_client_key(self,key):
         return True
 
