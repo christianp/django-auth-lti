@@ -187,4 +187,4 @@ class LTIAuthBackend(ModelBackend):
         """
         # Default back to user_id lti param
         uname = request.POST.get('canvas_user_id') or request.POST.get('user_id')
-        return prefix + uname
+        return (prefix + uname)[:30]
