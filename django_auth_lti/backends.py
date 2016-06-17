@@ -7,7 +7,7 @@ from django.contrib.auth.backends import ModelBackend
 from django.core.exceptions import PermissionDenied
 
 from oauthlib.oauth1 import RequestValidator,SignatureOnlyEndpoint, SIGNATURE_RSA, SIGNATURE_HMAC
-from oauthlib.oauth1.rfc5849 import signature
+from oauthlib.oauth1.rfc5849 import signature,errors
 
 logger = logging.getLogger(__name__)
 
