@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class LTIRequestValidator(RequestValidator):
     enforce_ssl = False
-    nonce_length = (20,50)
     def check_client_key(self,key):
         return True
 
@@ -25,6 +24,9 @@ class LTIRequestValidator(RequestValidator):
 
     def get_client_secret(self,client_key,request):
         return settings.LTI_OAUTH_CREDENTIALS.get(client_key)
+
+    def check_nonce(self,nonce):
+        return set(nonce) <= self.safe_characters
 
 
 class LTIEndpoint(SignatureOnlyEndpoint):
