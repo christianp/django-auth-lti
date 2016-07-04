@@ -23,6 +23,9 @@ class LTIRequestValidator(RequestValidator):
     def get_client_secret(self,client_key,request):
         return settings.LTI_OAUTH_CREDENTIALS.get(client_key)
 
+    def check_nonce(self,nonce):
+        return set(nonce) <= self.safe_characters
+
 
 class LTIEndpoint(SignatureOnlyEndpoint):
     resource_owner_secret = ''
@@ -109,10 +112,15 @@ class LTIEndpoint(SignatureOnlyEndpoint):
                 request.client_key, request)
             resource_owner_secret = self.resource_owner_secret
 
+            logger.info("client secret: {}".format(client_secret))
+            logger.info("owner secret: {}".format(resource_owner_secret))
+
             if request.signature_method == SIGNATURE_HMAC:
+                logger.info("HMAC")
                 valid_signature = signature.verify_hmac_sha1(request,
                                                              client_secret, resource_owner_secret)
             else:
+                logger.info("PLAINTEXT")
                 valid_signature = signature.verify_plaintext(request,
                                                              client_secret, resource_owner_secret)
         return valid_signature
