@@ -7,15 +7,12 @@ from django.contrib.auth.backends import ModelBackend
 from django.core.exceptions import PermissionDenied
 
 from oauthlib.oauth1 import RequestValidator,SignatureOnlyEndpoint, SIGNATURE_RSA, SIGNATURE_HMAC
-from oauthlib.oauth1.rfc5849 import signature
+from oauthlib.oauth1.rfc5849 import signature,errors
 
 logger = logging.getLogger(__name__)
 
 class LTIRequestValidator(RequestValidator):
     enforce_ssl = False
-    nonce_length = (20,40)
-    def check_client_key(self,key):
-        return True
 
     def validate_timestamp_and_nonce(client_key, timestamp, nonce, request, request_token=None, access_token=None):
         return True
@@ -30,6 +27,67 @@ class LTIRequestValidator(RequestValidator):
 class LTIEndpoint(SignatureOnlyEndpoint):
     resource_owner_secret = ''
 
+    def validate_request(self, uri, http_method='GET',
+                         body=None, headers=None):
+        """Validate a signed OAuth request.
+        :param uri: The full URI of the token request.
+        :param http_method: A valid HTTP verb, i.e. GET, POST, PUT, HEAD, etc.
+        :param body: The request body as a string.
+        :param headers: The request headers as a dict.
+        :returns: A tuple of 2 elements.
+                  1. True if valid, False otherwise.
+                  2. An oauthlib.common.Request object.
+        """
+        try:
+            request = self._create_request(uri, http_method, body, headers)
+        except errors.OAuth1Error:
+            logger.error("Create request failed")
+            return False, None
+
+        try:
+            self._check_transport_security(request)
+            self._check_mandatory_parameters(request)
+        except errors.OAuth1Error:
+            logger.error("transport security or mandatory params failed")
+            return False, request
+
+        if not self.request_validator.validate_timestamp_and_nonce(
+                request.client_key, request.timestamp, request.nonce, request):
+            logger.error("timestamp and nonce not valid")
+            return False, request
+
+        # The server SHOULD return a 401 (Unauthorized) status code when
+        # receiving a request with invalid client credentials.
+        # Note: This is postponed in order to avoid timing attacks, instead
+        # a dummy client is assigned and used to maintain near constant
+        # time request verification.
+        #
+        # Note that early exit would enable client enumeration
+        valid_client = self.request_validator.validate_client_key(
+            request.client_key, request)
+        if not valid_client:
+            logger.error("not valid client")
+            request.client_key = self.request_validator.dummy_client
+
+        valid_signature = self._check_signature(request)
+
+        # log the results to the validator_log
+        # this lets us handle internal reporting and analysis
+        request.validator_log['client'] = valid_client
+        request.validator_log['signature'] = valid_signature
+
+        # We delay checking validity until the very end, using dummy values for
+        # calculations and fetching secrets/keys to ensure the flow of every
+        # request remains almost identical regardless of whether valid values
+        # have been supplied. This ensures near constant time execution and
+        # prevents malicious users from guessing sensitive information
+        v = all((valid_client, valid_signature))
+        if not v:
+            logger.info("[Failure] request verification failed.")
+            logger.info("Valid client: %s", valid_client)
+            logger.info("Valid signature: %s", valid_signature)
+        return v, request
+
     def _check_signature(self, request, is_token_request=False):
         # ---- RSA Signature verification ----
         if request.signature_method == SIGNATURE_RSA:
@@ -37,6 +95,7 @@ class LTIEndpoint(SignatureOnlyEndpoint):
             # .. _`[RFC3447] section 8.2.2`: http://tools.ietf.org/html/rfc3447#section-8.2.1
             rsa_key = self.request_validator.get_rsa_key(
                 request.client_key, request)
+            logger.info("RSA: ".format(rsa_key))
             valid_signature = signature.verify_rsa_sha1(request, rsa_key)
 
         # ---- HMAC or Plaintext Signature verification ----
@@ -73,9 +132,23 @@ class LTIAuthBackend(ModelBackend):
     # Username prefix for users without an sis source id
     unknown_user_prefix = "cuid:"
 
-    def authenticate(self, request):
+    validator_class = LTIRequestValidator
+    endpoint_class = LTIEndpoint
 
-        logger.info("about to begin authentication process")
+    def get_validator(self,validator_class=None):
+        if validator_class==None:
+            validator_class = self.validator_class
+        return validator_class()
+
+    def get_endpoint(self,endpoint_class=None):
+        if endpoint_class==None:
+            endpoint_class = self.endpoint_class
+        return endpoint_class(**self.get_endpoint_kwargs())
+
+    def get_endpoint_kwargs(self):
+        return {'request_validator': self.get_validator()}
+
+    def authenticate(self, request):
 
         request_key = request.POST.get('oauth_consumer_key', None)
 
@@ -83,22 +156,16 @@ class LTIAuthBackend(ModelBackend):
             logger.error("Request doesn't contain an oauth_consumer_key; can't continue.")
             return None
 
-        if not settings.LTI_OAUTH_CREDENTIALS:
-            logger.error("Missing LTI_OAUTH_CREDENTIALS in settings")
-            raise PermissionDenied
+        validator = self.get_validator()
+        endpoint = self.get_endpoint()
 
-        secret = settings.LTI_OAUTH_CREDENTIALS.get(request_key)
+        secret = validator.get_client_secret(request_key,request)
 
         if secret is None:
             logger.error("Could not get a secret for key %s" % request_key)
             raise PermissionDenied
 
         logger.debug('using key/secret %s/%s' % (request_key, secret))
-
-        logger.info("about to check the signature")
-
-        validator = LTIRequestValidator()
-        endpoint = LTIEndpoint(validator)
 
         headers = {k:v for k,v in request.META.items() if type(v)==str}
         for k,v in request.META.items():
@@ -116,8 +183,6 @@ class LTIAuthBackend(ModelBackend):
             logger.error("Invalid request: signature check failed.")
             raise PermissionDenied
 
-        logger.info("done checking the signature")
-
         # if we got this far, the user is good
 
         user = None
@@ -131,8 +196,6 @@ class LTIAuthBackend(ModelBackend):
         email = request.POST.get('lis_person_contact_email_primary')
         first_name = request.POST.get('lis_person_name_given')
         last_name = request.POST.get('lis_person_name_family')
-
-        logger.info("We have a valid username: %s" % username)
 
         UserModel = get_user_model()
 
@@ -172,7 +235,7 @@ class LTIAuthBackend(ModelBackend):
         return user
 
     def clean_username(self, username):
-        return username
+        return username[:25]
 
     def get_default_username(self, request, prefix=''):
         """
