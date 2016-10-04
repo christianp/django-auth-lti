@@ -8,6 +8,7 @@ from django.contrib import auth
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 
+from datetime import datetime
 
 from .thread_local import set_current_request
 
@@ -64,6 +65,7 @@ class MultiLTILaunchAuthMiddleware(object):
     
                 resource_link_id = request.POST.get('resource_link_id', None)
                 lti_launch = {
+                    'launch_time': datetime.now().isoformat(),
                     'context_id': request.POST.get('context_id', None),
                     'context_label': request.POST.get('context_label', None),
                     'context_title': request.POST.get('context_title', None),
@@ -117,7 +119,8 @@ class MultiLTILaunchAuthMiddleware(object):
 
                 # Limit the number of LTI launches stored in the session
                 if len(lti_launches.keys()) >= getattr(settings, 'LTI_AUTH_MAX_LAUNCHES', 10):
-                    invalidated_launch = lti_launches.popitem(last=False)
+                    first_launch = sorted(lti_launches.keys(),key=lambda x:lti_launches[x].get('launch_time',''))[0]
+                    invalidated_launch = lti_launches.pop(first_launch)
                     logger.info("LTI launch invalidated: %s", json.dumps(invalidated_launch, indent=4))
 
                 lti_launches[resource_link_id] = lti_launch
