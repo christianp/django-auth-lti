@@ -252,4 +252,6 @@ class LTIAuthBackend(ModelBackend):
         """
         # Default back to user_id lti param
         uname = request.POST.get('canvas_user_id') or request.POST.get('user_id')
+        if uname is None:
+            raise Exception("No user-identifying information is present in the LTI launch data")
         return prefix + uname
