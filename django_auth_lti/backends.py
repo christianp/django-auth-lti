@@ -202,8 +202,8 @@ class LTIAuthBackend(ModelBackend):
         username = self.clean_username(username)  # Clean it
 
         email = request.POST.get('lis_person_contact_email_primary')
-        first_name = request.POST.get('lis_person_name_given')
-        last_name = request.POST.get('lis_person_name_family')
+        first_name = request.POST.get('lis_person_name_given')[:30]
+        last_name = request.POST.get('lis_person_name_family')[:30]
 
         UserModel = get_user_model()
 
