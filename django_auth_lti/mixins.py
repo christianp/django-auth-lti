@@ -17,17 +17,20 @@ class LTIRoleRestrictionMixin(LTIUtilityMixin):
     allowed_roles = None
     redirect_url = reverse_lazy('not_authorized')
     raise_exception = False
-    
-    def dispatch(self, request, *args, **kwargs):
+
+    def check_allowed(self, request):
         if self.allowed_roles is None:
             raise ImproperlyConfigured(
                 "'LTIRoleRestrictionMixin' requires "
                 "'allowed_roles' attribute to be set.")
         
-        if is_allowed(request, self.allowed_roles, self.raise_exception):
+        return is_allowed(request, self.allowed_roles, self.raise_exception)
+    
+    def dispatch(self, request, *args, **kwargs):
+        if self.check_allowed(request):
             return super(LTIRoleRestrictionMixin, self).dispatch(request, *args, **kwargs)
-        
-        return redirect(self.redirect_url)
+        else:
+            return redirect(self.redirect_url)
 
 
 class LTIRoleRequiredMixin(LoginRequiredMixin, LTIRoleRestrictionMixin):
