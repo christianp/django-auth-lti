@@ -30,10 +30,12 @@ def reverse(*args, **kwargs):
         parsed = urlparse(url)
         query = parse_qs(parsed.query)
         if 'resource_link_id' not in query.keys():
-            query['resource_link_id'] = request.LTI.get('resource_link_id')
-            url = urlunparse(
-                (parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(query), parsed.fragment)
-            )
+            resource_link_id = request.LTI.get('resource_link_id')
+            if resource_link_id is not None:
+                query['resource_link_id'] = resource_link_id
+                url = urlunparse(
+                    (parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(query), parsed.fragment)
+                )
     return url
 
 
