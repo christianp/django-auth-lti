@@ -1,10 +1,10 @@
 """
-Monkey-patch django.core.urlresolvers.reverse to add resource_link_id to all URLs
+Monkey-patch django.urls.reverse to add resource_link_id to all URLs
 """
 from urllib.parse import urlparse, urlunparse, parse_qs
 from urllib.parse import urlencode
 
-from django.core import urlresolvers
+from django import urls
 
 from .thread_local import get_current_request
 
@@ -41,12 +41,12 @@ def reverse(*args, **kwargs):
 
 def patch_reverse():
     """
-    Monkey-patches the django.core.urlresolvers.reverse function. Will not patch twice.
+    Monkey-patches the django.urls.reverse function. Will not patch twice.
     """
     global django_reverse
-    if urlresolvers.reverse is not reverse:
-        django_reverse = urlresolvers.reverse
-        urlresolvers.reverse = reverse
+    if urls.reverse is not reverse:
+        django_reverse = urls.reverse
+        urls.reverse = reverse
 
 
 patch_reverse()
