@@ -35,7 +35,10 @@ class MultiLTILaunchAuthMiddleware(object):
     it in order to retrieve the current resource_link_id.
     """
 
-    def process_request(self, request):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         logger.debug('inside process_request %s' % request.path)
 
         # AuthenticationMiddleware is required so that request.user exists.
@@ -135,6 +138,10 @@ class MultiLTILaunchAuthMiddleware(object):
         set_current_request(request)
         if not request.LTI:
             logger.warning("Could not find LTI launch for resource_link_id %s", resource_link_id)
+
+        response = self.get_response(request)
+
+        return response
 
     def clean_username(self, username, request):
         """
