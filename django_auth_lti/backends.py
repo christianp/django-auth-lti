@@ -243,7 +243,7 @@ class LTIAuthBackend(ModelBackend):
         return user
 
     def clean_username(self, username):
-        return username[:25]
+        return username[:140]
 
     def get_default_username(self, request, prefix=''):
         """
